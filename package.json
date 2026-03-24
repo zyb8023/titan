@@ -1,0 +1,68 @@
+{
+  "name": "titan-base",
+  "version": "1.0.0",
+  "private": true,
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@10.0.0",
+  "scripts": {
+    "build": "nest build",
+    "format": "prettier --write \"{src,prisma}/**/*.ts\"",
+    "start": "node dist/main.js",
+    "start:dev": "nest start --watch",
+    "start:prod": "node dist/main.js",
+    "lint": "eslint \"{src,prisma}/**/*.ts\" --max-warnings=0",
+    "prisma:generate": "node scripts/run-with-env.mjs prisma generate",
+    "prisma:migrate": "node scripts/run-with-env.mjs prisma migrate dev",
+    "prisma:deploy": "node scripts/run-with-env.mjs prisma migrate deploy",
+    "prisma:seed": "node scripts/run-with-env.mjs prisma db seed"
+  },
+  "prisma": {
+    "seed": "ts-node --project tsconfig.json --transpile-only prisma/seed.ts"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "prisma"
+    ]
+  },
+  "dependencies": {
+    "@nestjs/cache-manager": "^2.2.2",
+    "@nestjs/common": "^10.4.2",
+    "@nestjs/config": "^3.2.3",
+    "@nestjs/core": "^10.4.2",
+    "@nestjs/jwt": "^10.2.0",
+    "@nestjs/passport": "^10.0.3",
+    "@nestjs/platform-express": "^10.4.2",
+    "@nestjs/swagger": "^8.0.7",
+    "@prisma/client": "^5.19.1",
+    "bcryptjs": "^2.4.3",
+    "cache-manager": "^5.7.6",
+    "cache-manager-redis-yet": "^5.1.5",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.1",
+    "log4js": "^6.9.1",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
+    "swagger-ui-express": "^5.0.1"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^10.4.5",
+    "@nestjs/schematics": "^10.1.4",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.7.4",
+    "@types/passport-jwt": "^4.0.1",
+    "@typescript-eslint/eslint-plugin": "^8.8.1",
+    "@typescript-eslint/parser": "^8.8.1",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.2.1",
+    "prettier": "^3.3.3",
+    "prisma": "^5.19.1",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.6.2"
+  }
+}
