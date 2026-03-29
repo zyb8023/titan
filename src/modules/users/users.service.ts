@@ -15,41 +15,29 @@ type UserWithSecrets = Pick<
   User,
   'id' | 'email' | 'password' | 'role' | 'refreshTokenHash' | 'createdAt' | 'updatedAt'
 >;
+type CreateUserInput = Pick<CreateUserDto, 'email' | 'password'> & {
+  role: UserRole;
+};
+type RegisterUserInput = Pick<CreateUserDto, 'email' | 'password'>;
 
 @Injectable()
 export class UsersService {
   constructor(private readonly prismaService: PrismaService) {}
 
   async create(createUserDto: CreateUserDto): Promise<UserEntity> {
-    const existingUser = await this.prismaService.user.findUnique({
-      where: { email: createUserDto.email },
-      select: { id: true },
+    return this.createUser({
+      email: createUserDto.email,
+      password: createUserDto.password,
+      role: createUserDto.role ?? UserRole.USER,
     });
+  }
 
-    if (existingUser) {
-      throw new ConflictBusinessException('邮箱已存在', {
-        errorCode: AppErrorCode.USER_EMAIL_ALREADY_EXISTS,
-      });
-    }
-
-    // 密码在入库前统一做哈希，避免业务层遗漏。
-    const passwordHash = await bcrypt.hash(createUserDto.password, 10);
-    const user = await this.prismaService.user.create({
-      data: {
-        email: createUserDto.email,
-        password: passwordHash,
-        role: createUserDto.role ?? UserRole.USER,
-      },
-      select: {
-        id: true,
-        email: true,
-        role: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+  async register(registerUserInput: RegisterUserInput): Promise<UserEntity> {
+    return this.createUser({
+      email: registerUserInput.email,
+      password: registerUserInput.password,
+      role: UserRole.USER,
     });
-
-    return this.toUserEntity(user);
   }
 
   async findMe(userId: number): Promise<UserEntity> {
@@ -117,6 +105,45 @@ export class UsersService {
   }
 
   toUserEntity(user: PublicUserRecord): UserEntity {
-    return new UserEntity(user);
+    // 这里显式挑选可对外暴露的字段，避免把带有敏感信息的查询对象直接序列化到响应中。
+    return new UserEntity({
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    });
+  }
+
+  private async createUser(createUserInput: CreateUserInput): Promise<UserEntity> {
+    const existingUser = await this.prismaService.user.findUnique({
+      where: { email: createUserInput.email },
+      select: { id: true },
+    });
+
+    if (existingUser) {
+      throw new ConflictBusinessException('邮箱已存在', {
+        errorCode: AppErrorCode.USER_EMAIL_ALREADY_EXISTS,
+      });
+    }
+
+    // 用户创建入口统一走这里，保证注册与后台建人使用相同的密码与唯一性策略。
+    const passwordHash = await bcrypt.hash(createUserInput.password, 10);
+    const user = await this.prismaService.user.create({
+      data: {
+        email: createUserInput.email,
+        password: passwordHash,
+        role: createUserInput.role,
+      },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return this.toUserEntity(user);
   }
 }

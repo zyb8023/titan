@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 
+import { AppException } from '../../common/exceptions/app.exception';
 import { AppErrorCode } from '../../common/exceptions/error-code.enum';
 import { AuthenticationException } from '../../common/exceptions/authentication.exception';
 import type { JwtUser } from '../../common/interfaces/jwt-user.interface';
@@ -10,6 +11,7 @@ import { ProjectsRegistryService } from '../projects/projects-registry.service';
 import { UserEntity } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
 import type { AccessibleProjectDto } from './dto/auth-response.dto';
 
 interface TokenPair {
@@ -23,6 +25,14 @@ interface AuthPayload {
   projects: AccessibleProjectDto[];
 }
 
+interface AuthSubject {
+  id: number;
+  email: string;
+  role: UserEntity['role'];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -31,6 +41,17 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly projectsRegistryService: ProjectsRegistryService,
   ) {}
+
+  async register(registerDto: RegisterDto): Promise<AuthPayload> {
+    this.ensureRegisterPayload(registerDto);
+
+    const user = await this.usersService.register({
+      email: registerDto.email,
+      password: registerDto.password,
+    });
+
+    return this.buildAuthPayload(user);
+  }
 
   async login(loginDto: LoginDto): Promise<AuthPayload> {
     const user = await this.usersService.findByEmailWithSecrets(loginDto.email);
@@ -49,14 +70,7 @@ export class AuthService {
       });
     }
 
-    const tokens = await this.generateTokenPair(user.id, user.email, user.role);
-    await this.persistRefreshToken(user.id, tokens.refreshToken);
-
-    return {
-      user: this.usersService.toUserEntity(user),
-      tokens,
-      projects: this.getAccessibleProjects(user.role),
-    };
+    return this.buildAuthPayload(user);
   }
 
   async refresh(currentUser: JwtUser): Promise<AuthPayload> {
@@ -85,6 +99,14 @@ export class AuthService {
       });
     }
 
+    return this.buildAuthPayload(user);
+  }
+
+  async logout(userId: number): Promise<void> {
+    await this.usersService.updateRefreshToken(userId, null);
+  }
+
+  private async buildAuthPayload(user: AuthSubject): Promise<AuthPayload> {
     const tokens = await this.generateTokenPair(user.id, user.email, user.role);
     await this.persistRefreshToken(user.id, tokens.refreshToken);
 
@@ -93,10 +115,6 @@ export class AuthService {
       tokens,
       projects: this.getAccessibleProjects(user.role),
     };
-  }
-
-  async logout(userId: number): Promise<void> {
-    await this.usersService.updateRefreshToken(userId, null);
   }
 
   private async generateTokenPair(
@@ -148,5 +166,13 @@ export class AuthService {
       description: project.description,
       features: project.features,
     }));
+  }
+
+  private ensureRegisterPayload(registerDto: RegisterDto): void {
+    if (registerDto.password !== registerDto.confirmPassword) {
+      throw new AppException(HttpStatus.BAD_REQUEST, '两次输入的密码不一致', {
+        errorCode: AppErrorCode.BAD_REQUEST,
+      });
+    }
   }
 }

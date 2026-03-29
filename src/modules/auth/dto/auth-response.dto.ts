@@ -47,6 +47,6 @@ export class AuthPayloadDto {
 }
 
 export class AuthResponseDto extends BaseResponseDto {
-  @ApiProperty({ type: AuthPayloadDto, description: '登录或刷新结果' })
+  @ApiProperty({ type: AuthPayloadDto, description: '注册、登录或刷新结果' })
   data!: AuthPayloadDto;
 }

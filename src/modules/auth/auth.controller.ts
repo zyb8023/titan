@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -7,6 +7,7 @@ import { RefreshTokenGuard } from '../../common/guards/refresh-token.guard';
 import type { JwtUser } from '../../common/interfaces/jwt-user.interface';
 import { AuthPayloadDto, AuthResponseDto } from './dto/auth-response.dto';
 import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { AuthService } from './auth.service';
 
@@ -16,7 +17,17 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Public()
+  @Post('register')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '用户注册并返回登录态' })
+  @ApiOkResponse({ type: AuthResponseDto })
+  async register(@Body() registerDto: RegisterDto): Promise<AuthPayloadDto> {
+    return this.authService.register(registerDto);
+  }
+
+  @Public()
   @Post('login')
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: '用户登录' })
   @ApiOkResponse({ type: AuthResponseDto })
   async login(@Body() loginDto: LoginDto): Promise<AuthPayloadDto> {
@@ -25,6 +36,7 @@ export class AuthController {
 
   @Public()
   @Post('refresh')
+  @HttpCode(HttpStatus.OK)
   @UseGuards(RefreshTokenGuard)
   @ApiOperation({ summary: '刷新 Access Token / Refresh Token' })
   @ApiBody({ type: RefreshTokenDto })
@@ -34,6 +46,7 @@ export class AuthController {
   }
 
   @Post('logout')
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: '退出登录并清除 Refresh Token' })
   @ApiOkResponse({

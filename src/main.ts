@@ -8,6 +8,24 @@ import { AppModule } from './app.module';
 import { AppLoggerService } from './providers/logger/logger.service';
 import { SwaggerProviderService } from './providers/swagger/swagger.service';
 
+const resolveStartupUrl = async (
+  app: Awaited<ReturnType<typeof NestFactory.create>>,
+  apiPrefix: string,
+): Promise<string> => {
+  const appUrl = await app.getUrl();
+  const normalizedApiPrefix = apiPrefix.replace(/^\/+|\/+$/g, '');
+  const url = new URL(appUrl);
+
+  // Nest 在本地未显式指定 host 时，常会返回 IPv6 loopback，这里统一转换为更直观的 localhost。
+  if (url.hostname === '::1' || url.hostname === '::' || url.hostname === '0.0.0.0') {
+    url.hostname = 'localhost';
+  }
+
+  url.pathname = normalizedApiPrefix ? `/${normalizedApiPrefix}` : '/';
+
+  return url.toString().replace(/\/$/, '');
+};
+
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, {
     bufferLogs: true,
@@ -38,7 +56,7 @@ async function bootstrap(): Promise<void> {
 
   await app.listen(port);
 
-  logger.log(`应用已启动: ${await app.getUrl()}/${apiPrefix}`, 'Bootstrap');
+  logger.log(`应用已启动: ${await resolveStartupUrl(app, apiPrefix)}`, 'Bootstrap');
 }
 
 void bootstrap();
